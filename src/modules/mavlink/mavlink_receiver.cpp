@@ -1037,32 +1037,15 @@ MavlinkReceiver::handle_message_set_actuator_control_target(mavlink_message_t *m
 	     set_actuator_control_target.target_component == 0) &&
 	    values_finite) {
 
-		/* ignore all since we are setting raw actuators here */
-		offboard_control_mode.ignore_thrust             = true;
-		offboard_control_mode.ignore_attitude           = true;
-		offboard_control_mode.ignore_bodyrate           = true;
-		offboard_control_mode.ignore_position           = true;
-		offboard_control_mode.ignore_velocity           = true;
-		offboard_control_mode.ignore_acceleration_force = true;
-
-		offboard_control_mode.timestamp = hrt_absolute_time();
-
-		if (_offboard_control_mode_pub == nullptr) {
-			_offboard_control_mode_pub = orb_advertise(ORB_ID(offboard_control_mode), &offboard_control_mode);
-
-		} else {
-			orb_publish(ORB_ID(offboard_control_mode), _offboard_control_mode_pub, &offboard_control_mode);
-		}
-
-
-		/* If we are in offboard control mode, publish the actuator controls */
+		// Check the latest control mode
 		bool updated;
 		orb_check(_control_mode_sub, &updated);
 
 		if (updated) {
 			orb_copy(ORB_ID(vehicle_control_mode), _control_mode_sub, &_control_mode);
 		}
-
+		
+		/* If we are in offboard control mode, publish the actuator controls */
 		if (_control_mode.flag_control_offboard_enabled) {
 
 			actuator_controls.timestamp = hrt_absolute_time();
@@ -1074,22 +1057,29 @@ MavlinkReceiver::handle_message_set_actuator_control_target(mavlink_message_t *m
 		
 			// Publish actuator_controls to the control group selected with "group_mlx"
 			if(set_actuator_control_target.group_mlx == 0) {
+				/* ignore all offb ctrl modes since we are setting raw actuators here */
+				offboard_control_mode.ignore_thrust             = true;
+				offboard_control_mode.ignore_attitude           = true;
+				offboard_control_mode.ignore_bodyrate           = true;
+				offboard_control_mode.ignore_position           = true;
+				offboard_control_mode.ignore_velocity           = true;
+				offboard_control_mode.ignore_acceleration_force = true;
+
+				offboard_control_mode.timestamp = hrt_absolute_time();
+				
+				// Publish the updated offboard_control_mode
+				if (_offboard_control_mode_pub == nullptr) {
+				_offboard_control_mode_pub = orb_advertise(ORB_ID(offboard_control_mode), &offboard_control_mode);
+
+				} else {
+				orb_publish(ORB_ID(offboard_control_mode), _offboard_control_mode_pub, &offboard_control_mode);
+				}
+				
+				// Publish the actuator_controls
 				if (_actuator_controls_pub == nullptr) {
 					_actuator_controls_pub = orb_advertise(ORB_ID(actuator_controls_0), &actuator_controls);
 				} else {
 					orb_publish(ORB_ID(actuator_controls_0), _actuator_controls_pub, &actuator_controls);
-				}
-			} else if(set_actuator_control_target.group_mlx == 1) {
-				if (_actuator_controls_pub == nullptr) {
-					_actuator_controls_pub = orb_advertise(ORB_ID(actuator_controls_1), &actuator_controls);
-				} else {
-					orb_publish(ORB_ID(actuator_controls_1), _actuator_controls_pub, &actuator_controls);
-				}
-			} else if(set_actuator_control_target.group_mlx == 2) {
-				if (_actuator_controls_pub == nullptr) {
-					_actuator_controls_pub = orb_advertise(ORB_ID(actuator_controls_2), &actuator_controls);
-				} else {
-					orb_publish(ORB_ID(actuator_controls_2), _actuator_controls_pub, &actuator_controls);
 				}
 			} else if(set_actuator_control_target.group_mlx == 3) {
 				if (_actuator_controls_pub == nullptr) {
