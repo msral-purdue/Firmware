@@ -1069,10 +1069,9 @@ MavlinkReceiver::handle_message_set_actuator_control_target(mavlink_message_t *m
 				
 				// Publish the updated offboard_control_mode
 				if (_offboard_control_mode_pub == nullptr) {
-				_offboard_control_mode_pub = orb_advertise(ORB_ID(offboard_control_mode), &offboard_control_mode);
-
+					_offboard_control_mode_pub = orb_advertise(ORB_ID(offboard_control_mode), &offboard_control_mode);
 				} else {
-				orb_publish(ORB_ID(offboard_control_mode), _offboard_control_mode_pub, &offboard_control_mode);
+					orb_publish(ORB_ID(offboard_control_mode), _offboard_control_mode_pub, &offboard_control_mode);
 				}
 				
 				// Publish the actuator_controls
