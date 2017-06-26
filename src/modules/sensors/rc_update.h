@@ -110,14 +110,17 @@ private:
 	void set_params_from_rc(const ParameterHandles &parameter_handles);
 
 
-	int		_rc_sub = -1;			/**< raw rc channels data subscription */
-	int		_rc_parameter_map_sub = -1;		/**< rc parameter map subscription */
+	int		_rc_sub = -1;					/**< raw rc channels data subscription */
+	int		_rc_parameter_map_sub = -1;     /**< rc parameter map subscription */
+	int		_control_mode_sub = -1;			/**< control mode subscription
 
 	orb_advert_t	_rc_pub = nullptr;		/**< raw r/c control topic */
 	orb_advert_t	_manual_control_pub = nullptr;	/**< manual control signal topic */
 	orb_advert_t	_actuator_group_3_pub = nullptr;/**< manual control as actuator topic */
 
-	struct rc_channels_s _rc;			/**< r/c channel data */
+	struct rc_channels_s _rc;		        /**< r/c channel data */
+	struct vehicle_control_mode_s _control_mode;    /**< Vehicle control mode data
+
 
 	struct rc_parameter_map_s _rc_parameter_map;
 	float _param_rc_values[rc_parameter_map_s::RC_PARAM_MAP_NCHAN];	/**< parameter values for RC control */

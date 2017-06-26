@@ -46,6 +46,7 @@
 #include <uORB/uORB.h>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/topics/vehicle_control_mode.h>
 
 using namespace sensors;
 
@@ -75,6 +76,12 @@ int RCUpdate::init()
 		return -errno;
 	}
 
+	_control_mode_sub = orb_subscribe(ORB_ID(vehicle_control_mode));
+
+	if (_control_mode_sub < 0) {
+		return -errno;
+	}
+
 	return 0;
 }
 
@@ -82,6 +89,7 @@ void RCUpdate::deinit()
 {
 	orb_unsubscribe(_rc_sub);
 	orb_unsubscribe(_rc_parameter_map_sub);
+	orb_unsubscribe(_control_mode_sub);
 }
 
 void RCUpdate::update_rc_functions()
@@ -445,23 +453,34 @@ RCUpdate::rc_poll(const ParameterHandles &parameter_handles)
 			orb_publish_auto(ORB_ID(manual_control_setpoint), &_manual_control_pub, &manual, &instance,
 					 ORB_PRIO_HIGH);
 
-			/* copy from mapped manual control to control group 3 */
-			struct actuator_controls_s actuator_group_3 = {};
+			// Stop Manual Passthrough in OFFBOARD Mode
+			bool updated;
+			orb_check(_control_mode_sub, &updated);
 
-			actuator_group_3.timestamp = rc_input.timestamp_last_signal;
+			if (updated) {
+				orb_copy(ORB_ID(vehicle_control_mode), _control_mode_sub, &_control_mode);
+			}
 
-			actuator_group_3.control[0] = manual.y;
-			actuator_group_3.control[1] = manual.x;
-			actuator_group_3.control[2] = manual.r;
-			actuator_group_3.control[3] = manual.z;
-			actuator_group_3.control[4] = manual.flaps;
-			actuator_group_3.control[5] = manual.aux1;
-			actuator_group_3.control[6] = manual.aux2;
-			actuator_group_3.control[7] = manual.aux3;
+			if (!_control_mode.flag_control_offboard_enabled) {
+			
+				/* copy from mapped manual control to control group 3 */
+				struct actuator_controls_s actuator_group_3 = {};
 
-			/* publish actuator_controls_3 topic */
-			orb_publish_auto(ORB_ID(actuator_controls_3), &_actuator_group_3_pub, &actuator_group_3, &instance,
+				actuator_group_3.timestamp = rc_input.timestamp_last_signal;
+
+				actuator_group_3.control[0] = manual.y;
+				actuator_group_3.control[1] = manual.x;
+				actuator_group_3.control[2] = manual.r;
+				actuator_group_3.control[3] = manual.z;
+				actuator_group_3.control[4] = manual.flaps;
+				actuator_group_3.control[5] = manual.aux1;
+				actuator_group_3.control[6] = manual.aux2;
+				actuator_group_3.control[7] = manual.aux3;
+
+				/* publish actuator_controls_3 topic */
+				orb_publish_auto(ORB_ID(actuator_controls_3), &_actuator_group_3_pub, &actuator_group_3, &instance,
 					 ORB_PRIO_DEFAULT);
+			}
 
 			/* Update parameters from RC Channels (tuning with RC) if activated */
 			if (hrt_elapsed_time(&_last_rc_to_param_map_time) > 1e6) {
